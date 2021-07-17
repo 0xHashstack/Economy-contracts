@@ -109,4 +109,3 @@ node_modules/
 migrations/
 truffle-config.js
 test/
-contracts/Migrations.sol
