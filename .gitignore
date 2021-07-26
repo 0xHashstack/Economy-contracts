@@ -108,5 +108,8 @@ dist
 node_modules/
 migrations/
 truffle-config.js
+package.json
+package-lock.json
+*.json
 test/
 .env
