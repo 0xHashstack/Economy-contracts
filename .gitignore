@@ -111,3 +111,8 @@ truffle-config.js
 *.json
 test/
 .env
+
+
+
+#Virtual environment
+Practice.sol

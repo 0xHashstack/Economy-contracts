@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.6 <0.9.0;
 
-import "contracts/util/Context.sol";
-import "contracts/util/Address.sol";
+import ".././util/Address.sol";
+import ".././util/Context.sol";
 
 contract Stack is Context {
     using Address for address;
@@ -35,16 +35,13 @@ contract Stack is Context {
         uint256 _timeStamp
     );
 
-    event PauseState(address indexed _pauser, bool _paused, uint256 _timeStamp);
+    event PauseState(
+        address indexed _pauser, 
+        bool _paused, 
+        uint256 _timeStamp
+    );
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_,
-        uint256 initialSupply_,
-        uint256 cappedSupply_,
-        address admin_
-    ) {
+    constructor(string memory name_,string memory symbol_,uint8 decimals_,uint256 initialSupply_, uint256 cappedSupply_, address admin_) {
         name = name_;
         symbol = symbol_;
         decimals = decimals_;
@@ -66,6 +63,14 @@ contract Stack is Context {
     fallback() external payable {
         payable(admin).transfer(_msgValue());
     }
+    
+    function balanceOf(address addr) public view returns(uint256) {
+        return _balances[addr];
+    }
+
+    function allowances(address owner, address spender) public view returns(uint256) {
+        return _allowances[owner][spender];
+    }
 
     function pauseState() external view returns (string memory) {
         if (_paused == true) {
@@ -74,11 +79,7 @@ contract Stack is Context {
         return "Contract is active";
     }
 
-    function transfer(address _to, uint256 _value)
-        external
-        nonReentrant()
-        returns (bool)
-    {
+    function transfer(address _to, uint256 _value)external nonReentrant() returns (bool)  {
         _preTransferCheck();
         require(_balances[_msgSender()] >= _value, "Insufficient balance");
 
@@ -94,27 +95,16 @@ contract Stack is Context {
         _preTransferCheck();
         _allowances[_msgSender()][_spender] = 0;
 
-        require(
-            _balances[_msgSender()] >= _value,
-            "Insuffficient balance, or you do not have necessary permissions"
-        );
+        require(_balances[_msgSender()] >= _value,"Insuffficient balance, or you do not have necessary permissions");
         _allowances[_msgSender()][_spender] += _value;
 
         emit Approved(_msgSender(), _spender, _value, block.timestamp);
         return true;
     }
 
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _value
-    ) external nonReentrant() returns (bool) {
+    function transferFrom(address _from,address _to,uint256 _value) external nonReentrant() returns (bool) {
         _preTransferCheck();
-        require(
-            _allowances[_from][_msgSender()] >= _value &&
-                _balances[_from] >= _value,
-            "Insufficient allowances, or balance"
-        );
+        require(_allowances[_from][_msgSender()] >= _value && _balances[_from] >= _value,"Insufficient allowances, or balance");
 
         _balances[_from] -= _value;
         _balances[_to] += _value;
@@ -126,12 +116,7 @@ contract Stack is Context {
         return true;
     }
 
-    function mint(address _to, uint256 amount)
-        external
-        onlyAdmin()
-        nonReentrant()
-        returns (bool)
-    {
+    function mint(address _to, uint256 amount) external onlyAdmin nonReentrant() returns (bool)   {
         require(totalSupply <= cappedSupply, "Exceeds capped supply");
         require(amount != 0 && _to != address(0), "you can not mint 0 tokens");
 
@@ -141,16 +126,8 @@ contract Stack is Context {
         return true;
     }
 
-    function burn(address account, uint256 amount)
-        external
-        onlyAdmin()
-        nonReentrant()
-        returns (bool)
-    {
-        require(
-            account != address(0),
-            "You can not burn tokens from this address"
-        );
+    function burn(address account, uint256 amount) external onlyAdmin nonReentrant() returns (bool)    {
+        require(account != address(0),"You can not burn tokens from this address");
 
         _balances[account] -= amount;
         totalSupply -= amount;
@@ -160,19 +137,16 @@ contract Stack is Context {
         return true;
     }
 
-    function pause() external onlyAdmin() nonReentrant() {
+    function pause() external onlyAdmin nonReentrant() {
         _pause();
     }
 
-    function unpause() external onlyAdmin() nonReentrant() {
+    function unpause() external onlyAdmin nonReentrant() {
         _unpause();
     }
 
     function _preTransferCheck() private view {
-        require(
-            _paused == false,
-            "The contract is paused. Transfer functions are temporarily disabled"
-        );
+        require(_paused == false,"The contract is paused. Transfer functions are temporarily disabled");
         this;
     }
 
