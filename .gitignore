@@ -106,7 +106,9 @@ dist
 
 # Additional files/folders added
 node_modules/
-bin/
+#Ignore folders and sub folders
+**/bin/ 
+**/build/
 migrations/
 truffle-config.js
 *.json
