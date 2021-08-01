@@ -1,190 +1,293 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.6 <0.9.0;
+pragma solidity 0.8.6;
 
 import ".././util/Address.sol";
 import ".././util/Context.sol";
 import ".././util/IERC20.sol";
 
-contract Stack is Context, IERC20 {
-    using Address for address;
+contract Stack is Context{
+  using Address for address;
+  
+  string public name;
+  string public symbol;
+  uint8 public decimals;
 
-    string public name;
-    string public symbol;
-    uint8 public decimals;
+  uint256 public totalSupply;
+  uint256 public cappedSupply;
 
-    uint256 _totalSupply;
-    uint256 cappedSupply;
+  mapping(address => uint256) private _balances;
+  mapping(address => mapping(address => uint256)) private _allowances;
+  mapping(address => bool) private _blacklist;
 
-    address admin;
+  address private admin;
 
-    bool _reentrant = false;
-    bool _paused = false;
+  bool public isLocked;
+  bool public isReentrant;
 
-    mapping(address => uint256) _balances;
-    mapping(address => mapping(address => uint256)) _allowances;
+  event Transfer( address indexed from, address indexed to, uint256 indexed value);
+  event Approval( address indexed owner, address indexed  spender, uint256 indexed amount);
 
-    event Transfer(
-        address indexed _from, 
-        address indexed _to, 
-        uint256 _value
-    );
+  event ContractState(bool isLocked, address from);
+  event LockUser(address user);
+  event UnlockUser(address user);
+  
+   constructor(string memory name_, string memory symbol_, uint8 decimals_, address admin_, uint256 initialSupply_, uint256 cappedSupply_) {
+    name = name_;
+    symbol = symbol_;
+    decimals = decimals_;
 
-    event Approval(
-        address indexed _owner,
-        address indexed _spender,
-        uint256 _value
-    );
-    event PauseState(
-        address indexed _pauser, 
-        bool _paused
-    );
+    isLocked = false;
+    isReentrant = false;
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_,
-        address admin_,
-        uint256 cappedSupply_
-    ) {
-        name = name_;
-        symbol = symbol_;
-        decimals = decimals_;
+    admin = admin_;
+    cappedSupply = cappedSupply_;
+    // _balances[admin] = _balances[admin] + initialSupply_;
 
-        admin = admin_;
-        cappedSupply = cappedSupply_;
+    // totalSupply = totalSupply + initialSupply_;
 
-        _mint(admin, 1000);
+    // emit Transfer(address(0), admin, initialSupply_);
+
+    _mint(admin, initialSupply_);
+    emit Transfer(address(0), admin, initialSupply_);
+
+  }
+
+/// RECEIVE ETHER
+  receive() external payable {
+    payable(admin).transfer(_msgValue());
+  }
+
+  fallback() external payable {
+    payable(admin).transfer(_msgValue());
+  }
+
+
+/// TRANSFER ACCIDENTAL TOKEN TRANSFERS BACK TO THE OWNERS. 
+  function transferAnyErc20Token(address _token, address payable _to, uint256 _amount) external validLock reentrancyGuard auth returns(bool)   {
+    IERC20(_token).transfer(_to, _amount);
+
+    return true;
+  }
+
+
+/// EXTERNAL VIEW FUNCTIONS
+  function balanceOf(address addr) external view  returns(uint256)  {
+    return _balances[addr];
+  }
+
+  function allowances(address owner, address  _spender) external view returns(uint256)  {
+    return _allowances[owner][_spender];
+  }
+
+  function contractState() external view returns(bool)  {
+    return isLocked;
+  }
+
+
+  function checkRestriction(address _user) external view returns(bool)  {
+    return _blacklist[_user];
+  }
+
+
+/// RESTRICT BAD PLAYERS WITHOUT LOCKING THE CONTRACT 
+  function restrictAddress(address _user) external validLock auth returns(bool) {
+    
+    require(_blacklist[_user] != true, "This address is already restricted.");
+    _blacklist[_user] = true;
+    
+    emit LockUser(_user);
+    return true;
+  }
+
+  function removeRestriction(address _user) external validLock auth returns(bool){
+    
+    require(_blacklist[_user] == true, "This address is not restricted");
+    _blacklist[_user] = false;
+    
+    emit UnlockUser(_user);
+    return true;
+  }
+
+
+/// TOKEN TRANSFER FUNCTIONS 
+  function transfer(address _to, uint256 _amount) external validLock reentrancyGuard returns(bool) {
+
+    _preTradeCheck(_msgSender(), _to, _amount);
+    _transfer(_msgSender(), _to, _amount);
+
+    return true;
+  }
+
+  // batchTransfer is to enable bulk token distribution from msg.sender.
+  function batchTransfer(address[] calldata _recipient, uint256[] calldata _amount) external validLock reentrancyGuard  returns(bool) {
+    require(_recipient.length == _amount.length, "mismatch entries");
+
+    uint256 size = _recipient.length;
+
+    for (uint256 i = 0; i<size; i++) {
+      _preTradeCheck(_msgSender(), _recipient[i], _amount[i]);
+      _transfer(_msgSender(), _recipient[i], _amount[i]);
     }
+     return true;
+  }
 
-    receive() external payable {
-        payable(admin).transfer(_msgValue());
-    }
+  function approve(address _spender, uint256 _amount) external validLock reentrancyGuard returns(bool) {
 
-    fallback() external payable {
-        payable(admin).transfer(_msgValue());
-    }
+    _preTradeCheck(_msgSender(), _spender, _amount);
 
-    function transferAnyERC20(address token_,address recipient_,uint256 amount_) external auth() nonReentrant() {
-        IERC20(token_).transfer(recipient_, amount_);
-    }
+    _allowances[_msgSender()][_spender] = 0;
+    _approve(_msgSender(), _spender, _amount);
 
-    function totalSupply() public view override returns (uint256) {
-        return _totalSupply;
-    }
+    return true;
 
-    function balanceOf(address account) public view override returns (uint256) {
-        return _balances[account];
-    }
+  }
+  
+  function transferFrom(address _owner, address _recipient, uint256 _amount) external reentrancyGuard returns(bool) {
 
-    function allowance(address _owner, address _spender) public view override returns (uint256 remaining)    {
-        return _allowances[_owner][_spender];
-    }
+    _preTradeCheck(_owner, _msgSender(), _amount);
+    require(_recipient != address(0) && _blacklist[_recipient] != true, "You cannot transfer funds to a restricted address");
 
-    function pauseState() external view returns (string memory) {
-        if (_paused == true) {
-            return "Contract is paused. Token transfers are temporarily disabled.";
-        }
-        return "Contract is not paused";
-    }
+    _decreaseAllowance(_owner, _msgSender(), _amount);
+    _transfer(_owner, _recipient, _amount);
 
-    function pause() public auth() nonReentrant() {
-        _pause();
-    }
+    return true;
+  }
+  
+  function increaseAllowance(address _spender, uint256 _amount) external validLock reentrancyGuard returns (bool) {
+    
+    _preTradeCheck(_msgSender(), _spender, _amount);
+    _increaseAllowance(_msgSender(), _spender, _amount);
 
-    function unpause() public auth() nonReentrant() {
-        _unpause();
-    }
+    return true;
+  }
 
-    function transfer(address _to, uint256 _value) public override nonReentrant() returns (bool success) {
-        _checkPauseState();
-        _transfer(_msgSender(), _to, _value);
-        return true;
-    }
+  function decreaseAllowance(address  _spender, uint256 _amount) external validLock reentrancyGuard returns (bool) {
+    
+    _preTradeCheck(_msgSender(), _spender, _amount);  
+    _decreaseAllowance(_msgSender(), _spender, _amount);
 
-    function approve(address _spender, uint256 _value) public override returns (bool) {
-        _checkPauseState();
-        _approve(_spender, _value);
-        return true;
-    }
+    return true;
+  }
+  
+  function mint(address _to, uint256 _amount) external validLock reentrancyGuard auth returns(bool) {
+    
+    require(totalSupply + _amount <= cappedSupply, "You can not mint more than permissible amount of tokens");
+    _mint(_to, _amount);
 
-    function transferFrom(address _from,address _to,uint256 _value) public override nonReentrant() returns (bool) {
-        _checkPauseState();
-        require (_allowances[_from][_msgSender()] >= _value && _balances[_from] >= _value, "Insufficient balance, or allowance");
-        _transfer(_from, _to, _value);
-        
-        _allowances[_from][_msgSender()] -= _value;
-        return true;
-    }
+    return true;
+  }
 
-    // This works too
-    function _mint(address _to, uint256 amount) internal auth() nonReentrant() {
-        _checkPauseState();
-        require(_totalSupply <= cappedSupply && amount != 0 && _to != address(0),"Token mint is not permitted");
-        _balances[_to] += amount;
-        _totalSupply += amount;
+  function burn(address _from, uint256 _amount) external validLock returns(bool){
 
-        emit Transfer(address(0), _to, amount);
-    }
+    require(_balances[_from] >= _amount, "Insufficient balance");
+    _burn(_from, _amount);
 
-    function _burn(address account, uint256 amount) internal auth() nonReentrant()    {
-        _checkPauseState();
-        require(account != address(0),"You can not burn tokens from this account");
+    return true;
+  }
 
-        _balances[account] -= amount;
-        _totalSupply -= amount;
-        emit Transfer(account, address(0), amount);
-    }
+  function lockContract() external validLock reentrancyGuard auth returns(bool)  {
+    _lock(_msgSender());
 
-    function _checkPauseState() internal view {
-        require(_paused == false,"The contract is paused. Transfer functions are temporarily disabled");
-    }
+    return true;
+  }
 
-    function _pause() private {
-        require(_paused == false, "This contract is already paused");
-        _paused = true;
+  function unlockContract() external validLock reentrancyGuard auth returns(bool)  {
+    _unlock(_msgSender());
 
-        emit PauseState(_msgSender(), true);
-    }
+    return true;
+  }
 
-    function _unpause() private {
-        require(_paused == true, "This contract is already paused");
-        _paused = false;
 
-        emit PauseState(_msgSender(), false);
-    }
+/// PRIVATE FUNCTIONS 
 
-    function _transfer(address sender, address recipient, uint256 amount) private {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
-        require(_balances[sender] >= amount, "You do not have enough balance");
+  function _preTradeCheck(address _from, address _to, uint256 _amount) private view  {
+    require(_from != address(0) && _to != address(0), "Zero address can not be used in a transaction");
+    require(_blacklist[_from] != true && _blacklist[_to] != true, "Blacklisted address can not be used in a transaction");
+    require(_balances[_from] >= _amount, "Insufficient balance");
+  }
 
-        _balances[sender] -= amount;
-        _balances[recipient] += amount;
+  function _transfer(address _from, address _to, uint256 _amount) private {
 
-        emit Transfer(sender, recipient, amount);
+    _balances[_from] = _balances[_from] - _amount;
+    _balances[_to] = _balances[_to] + _amount;
 
-    }
+    emit Transfer(_from, _to, _amount);
+  }
 
-    function _approve(address _spender, uint256 _value) private {
-        require(_balances[_msgSender()] >= _value, "Insufficient balance");
-        require(_msgSender() != address(0), "ERC20: approve from the zero address");
-        require(_spender != address(0), "ERC20: approve to the zero address");
+  function _approve(address _owner, address _spender, uint256 _value) private {
 
-        _allowances[_msgSender()][_spender] = _value;
+    _allowances[_owner][_spender] = _value;
 
-        emit Approval(_msgSender(), _spender, _value);
-        
-    }
+    emit Approval(_owner, _spender, _value);
 
-    modifier nonReentrant() {
-        require(_reentrant == false, "Re-entrant alert!");
-        _reentrant = true;
-        _;
-        _reentrant = false;
-    }
+  }
 
-    modifier auth() {
-        require(_msgSender() == admin, "Inadequate permission");
-        _;
-    }
+  function _increaseAllowance(address _owner, address _spender, uint256 _amount) private reentrancyGuard  returns(bool) {
+    
+    require(_allowances[_owner][_spender] > 0, "Your existing allowances are zero. Please use approve() for allowances");
+    uint256 _value = _allowances[_owner][_spender] + _amount;
+
+    _approve(_owner,  _spender, _value);
+
+    return true;
+  }
+
+
+  function _decreaseAllowance(address _owner, address _spender, uint256 _amount) private{
+    
+    require(_allowances[_owner][_spender] > 0 && _amount >=0 , "Allowance can not be negative.");
+    uint256 _value = _allowances[_owner][_spender] - _amount;
+
+    _approve(_owner,  _spender, _value);
+
+  }
+
+  function _mint(address _to, uint256 _amount) private  {
+
+    _balances[_to] = _balances[_to] + _amount;
+    totalSupply = totalSupply + _amount;
+
+    emit Transfer(address(0), _to, _amount);
+  }
+
+  function _burn(address _from, uint256 _amount) private {
+    
+    _balances[_from] = _balances[_from] - _amount;
+    totalSupply = totalSupply - _amount;
+
+    emit Transfer(_from, address(0), _amount);
+  }
+
+  function _lock(address _from) private {
+    isLocked = true;
+
+    emit ContractState(isLocked, _from);
+
+  }
+
+  function _unlock(address _from) private  {
+    isLocked = false;
+
+    emit ContractState(isLocked, _from);
+  }
+
+/// MODIFIERS
+
+  modifier validLock  {
+    require(isLocked == false, "This contract is locked. Transactions are temporarily disabled");
+    _;
+  }
+
+  modifier auth {
+    require(_msgSender() == admin, "You don't have adequate permissions");
+    _;
+  }
+
+  modifier reentrancyGuard  {
+    require(isReentrant == false, "Re-entrancy denied");
+    isReentrant = true;
+    _;
+    isReentrant = false;
+  }
+
 }
