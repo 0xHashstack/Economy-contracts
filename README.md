@@ -1,7 +1,6 @@
 
 # Hashstack economy contracts
-![Twitter Follow](https://img.shields.io/twitter/follow/hashstackfi?label=Follow%20Hashstack&logo=Twitter) 
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/hashstackfi/Economy-contracts?label=Commits&logo=github)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/hashstack.svg?style=social&label=Follow%20%40hashstack)](https://twitter.com/hashstackfi)
 
 > #### [We are hiring!](docs.hashstack.finance/careers)
 
