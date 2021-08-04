@@ -110,7 +110,7 @@ node_modules/
 **/bin/ 
 **/build/
 migrations/
-truffle-config.js
+# truffle-config.js
 *.json
 test/
 .env
