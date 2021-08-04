@@ -6,8 +6,8 @@
 
 This repository is a home to the below contracts
 
-1. Token contracts
-2. Governance contracts
+1. Contracts that power various transactions
+2. Autonomous governance.
 
 
 #
