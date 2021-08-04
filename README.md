@@ -39,5 +39,5 @@ This repository is a home to the below contracts
 #
 
 ### Contact us
-[General queries](hello@hashstack.finance) 
-[Partnerships](Yui@hashstack.finance)
+* [General queries](hello@hashstack.finance) 
+* [Partnerships](Yui@hashstack.finance)
