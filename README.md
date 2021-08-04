@@ -6,8 +6,8 @@
 
 This repository is a home to the below contracts
 
-1. Contracts that power various transactions
-2. Autonomous governance.
+1. Catalysts powering the Hashstack economy.
+2. Autonomous governance enablers.
 
 
 #
