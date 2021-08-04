@@ -15,7 +15,7 @@ This repository is a home to the below contracts
 #
 ## STACK | Hashstack Governance
 
-> Stack is the governance token powering the decision making body in the entire Hashstack dao. In order to propose improvements, or vote on one, you must hodl at least 0.01% STACK tokens.
+> Stack is the governance token powering the decision making body in the entire Hashstack dao. In order to propose improvements, or vote on one, you must own at least 0.01% STACK tokens inorder to partake in governance decisions.
 
 
 ## Details
