@@ -27,13 +27,13 @@ This repository is a home to the below contracts
 
 
 ## Official links
-1. [Website](hashstack.finance)
-2. [Blog](hashstack.medium.com)
-3. [Documentation](docs.hashstack.finance)
+1. [Website](https://hashstack.finance)
+2. [Blog](https://hashstack.medium.com)
+3. [Documentation](https://docs.hashstack.finance)
 
 
 ### Social & community
-1. [Twitter](twitter.com/0xhashstack)
+1. [Twitter](https://twitter.com/0xhashstack)
 2. [Telegram](https://t.me/Hashstack_Official)
 3. [Community](https://t.me/Hashstack_Community)
 
