@@ -2,7 +2,7 @@
 # Hashstack economy contracts
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/hashstack.svg?style=social&label=Follow%20%40hashstack)](https://twitter.com/hashstackfi)
 
-> #### [We are hiring!](docs.hashstack.finance/careers)
+> #### [We are hiring!](https://docs.hashstack.finance/careers)
 
 This repository is a home to the below contracts
 
