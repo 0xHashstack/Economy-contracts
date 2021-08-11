@@ -33,8 +33,9 @@ This repository is a home to the below contracts
 
 
 ### Social & community
-1. [Twitter](twitter.com/hashstackfi)
-2. [Telegram](t.me/Hashstackfi)
+1. [Twitter](twitter.com/0xhashstack)
+2. [Telegram](t.me/Hashstack_Official)
+3. [Community](t.me/Hashstack_Community)
 
 #
 
